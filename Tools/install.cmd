@@ -7,3 +7,5 @@ cd \venv
 pip3 install json
 
 pip3 install riotwatcher
+
+pip3 install SQLAlchemy 
