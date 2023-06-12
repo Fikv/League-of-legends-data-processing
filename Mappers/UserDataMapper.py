@@ -14,17 +14,18 @@ class UserDataMapper:
     def mapUserDataToTable(self, json, json2):
         riot_account = PlayerRiotAccountData(
             json['id'],
-            json['accointId'],
+            json['accountId'],
             json['puuid']
         )
         
         current_datetime = datetime.now()
-        formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S") 
+        formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        dict = json2[0]
         player = Player(
             json['name'],
             'EUNE',
-            json2['tier'] + ' ' + json['rank'],
-            json2['leaguePoints'],
+            dict['tier'] + ' ' + dict['rank'],
+            dict['leaguePoints'],
             formatted_datetime
         )
         self.session.add(player)

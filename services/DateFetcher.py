@@ -1,5 +1,5 @@
 import requests
-from ..Mappers.UserDataMapper import UserDataMapper 
+from Mappers.UserDataMapper import UserDataMapper
 from UrlCreator import UrlCreator
 
 class DataFetcher:

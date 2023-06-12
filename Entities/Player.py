@@ -4,7 +4,7 @@ from Entities.Base import Base
 class Player(Base):
     __tablename__ = 'player'
 
-    player_id = Column(Integer, primary_key=True)
+    player_id = Column(Integer, primary_key=True, autoincrement=True)
     nickname = Column(Text)
     player_server = Column(Text)
     rank_solo = Column(Text)
