@@ -100,8 +100,16 @@ class UPLOAD_DATA:
         self.close_connection()
 
     def add_new_lp_gains(self,player_id, date, LPS_amount):
+        '''
+        description:
+            function adding the information to table PLAYER_LP_GAINS
+        params:
+            player_id - this is player id get from riot api
+            date - the date when the account information was updated
+            lps_amount - amount of league points for user
+        '''
         query = f'''
-                INSERT INTO MATCHES (PLAYER_ID, DATE_OF_UPDATE, AMOUNT_OF_LPS)
+                INSERT INTO PLAYER_LP_GAINS (PLAYER_ID, DATE_OF_UPDATE, AMOUNT_OF_LPS)
                 VALUES (?, ?, ?)
                 '''
         self.open_connection()
@@ -109,19 +117,37 @@ class UPLOAD_DATA:
         self.conn.commit()
         self.close_connection()
 
-    def main_adding_tool(self, user_name, region, server, match_list_volume):
+    def main_adding_tool(self, user_name:str, region:str, server:str, match_list_volume:int):
+        '''
+        description:
+            The main function for adding tool. While calling it and providing a user information you can add him to the database
+            and information about his games and ranks progress.
+
+        params:
+            user_name - league name from the game
+            region - region where player have located the account, for example eun1
+            server - name for game server, for example eun1 have server named europe
+            match_list_volume - number how many games counting from the newest one you want to add to the database
+        '''
+        # create connection to riot API
         riot_data_tool = GET_DATA(key=self.riot_key, region=region, server=server)
+        # get user data {"id","accountId","puuid","name","profileIconId","revisionDate","summonerLevel"}
         user = riot_data_tool.user_by_name(user_name)
-        if user:
+        if user: # if exist go to next steps
+            # get users ranks info this will be a list of rank dicts, one dict have structure: {"leagueId","queueType","tier","rank","summonerId","summonerName","leaguePoints","wins","losses","veteran","inactive","freshBlood","hotStreak"
             ranks = riot_data_tool.ranks_by_id(user["id"])
-            for rank in ranks:
+            for rank in ranks: # iter on the ranks list and find 'solo duo' :D
                 if rank["queueType"]=="RANKED_SOLO_5x5":
+                    # check if user is already added to database and if not add him
                     if not self.check_user_existence(user["id"]):
                         self.add_new_user(user["id"], user_name, server, rank["tier"]+rank["rank"], rank["leaguePoints"])
 
+                    # get match list by user puuid
                     match_list = riot_data_tool.match_list_by_puuid(user["puuid"], volume=match_list_volume)
-                    for match in match_list:
+                    for match in match_list: # iter by elements in the matches list
+                        # get data about specific match from the list
                         match_info = riot_data_tool.get_match_data(match)
+                        # get match time stamp and convert it to date
                         timestamp = match_info["info"]["gameCreation"]/1000
                         date = datetime.datetime.fromtimestamp(timestamp).date()
                         self.add_new_matches(user["id"],date, match, match_info["info"]["gameMode"])
