@@ -145,12 +145,14 @@ class UPLOAD_DATA:
                     # get match list by user puuid
                     match_list = riot_data_tool.match_list_by_puuid(user["puuid"], volume=match_list_volume)
                     for match in match_list: # iter by elements in the matches list
-                        # get data about specific match from the list
-                        match_info = riot_data_tool.get_match_data(match)
-                        # get match time stamp and convert it to date
-                        timestamp = match_info["info"]["gameCreation"]/1000
-                        date = datetime.datetime.fromtimestamp(timestamp).date()
-                        self.add_new_matches(user["id"],date, match, match_info["info"]["gameMode"])
+                        if not self.check_matches_existence(match):
+                            # get data about specific match from the list
+                            match_info = riot_data_tool.get_match_data(match)
+                            # get match time stamp and convert it to date
+                            timestamp = match_info["info"]["gameCreation"]/1000
+                            date = datetime.datetime.fromtimestamp(timestamp).date()
+                            self.add_new_matches(user["id"],date, match, match_info["info"]["gameMode"])
+
 
 test = UPLOAD_DATA()
-test.main_adding_tool("Myś","eun1","europe",5)
+test.main_adding_tool("Myś","eun1","europe",30)
