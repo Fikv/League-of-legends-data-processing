@@ -2,6 +2,8 @@ import pyodbc
 import sys
 from azure_database.get_data import GET_DATA
 import datetime
+import json
+import datetime
 
 
 class UPLOAD_DATA:
@@ -109,6 +111,58 @@ class UPLOAD_DATA:
         self.conn.commit()
         self.close_connection()
 
+
+    def add_match_data_info(self, data):
+        query = f'''INSERT INTO MATCH_DATA (PLAYER_ID, MATCH_ID, DATE_OF_MATCH, WIN,
+                                      RANKED_SOLO, RANKED_DUO, GAME_CREATION, GAME_DURATION, GAME_END_TIMESTAMP, GAME_MODE, 
+                                      GAME_START_TIMESTAMP, GAME_TYPE, MAP_ID, EARLIEST_BARON, DETECTOR_WARDS_PLACED, FIRST_BLOOD_KILL,  
+                                      ENEMY_MISSING_PING, VISION_SCORE, WARD_PLACED, ASSISTS_ME_PINGS, BARON_KILLS, DRAGON_KILLS, 
+                                      HERALD_KILLS, FIRST_TURRET, CONTROL_WARDS_PLACED, TEAM_ID)  
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                      '''
+        #data = json.loads(match_info)
+        #zadanie jest dość proste muszę wyciągnać obiekt participant dla kązdego puuid i wrzucić do bazy :)
+        players = [participant['puuid'] for participant in data["info"]['participants']]
+        info = data["info"]
+        for participant in data['info']['participants']:
+            riot_data_tool = riot_data_tool = GET_DATA(key=self.riot_key, region="eun1", server="europe")
+            user = riot_data_tool.user_by_name(participant["summonerName"])
+            if user:
+                ranks = riot_data_tool.ranks_by_id(user["id"])
+                for rank in ranks:
+                    if rank["queueType"] == "RANKED_SOLO_5x5":
+                        if not self.check_user_existence(user["id"]):
+                            self.add_new_user(user["id"], participant["summonerName"], "europe", rank["tier"] + rank["rank"],
+                                              rank["leaguePoints"])
+
+                        match_list = riot_data_tool.match_list_by_puuid(user["puuid"], volume=30)
+            puuid = participant['puuid']
+            #tu musi byc wyszstko zeby do tabeli wrzucic pozdro, mozliwe potrzebne parsowanie ale chyba nie do dat
+            if participant["role"] == "SOLO":
+                solo = True
+                duo = False
+            else:
+                solo = False
+                duo = True
+            if participant["challenges"]["takedownOnFirstTurret"] == 1:
+                firstTurret = True
+            else:
+                firstTurret = False
+
+            converted_date = datetime.datetime.fromtimestamp(info["gameStartTimestamp"]/1000)
+            human_readable_date = converted_date.strftime('%Y-%m-%d %H:%M:%S')
+            parameters = [participant["summonerId"] ,data["metadata"]["matchId"], converted_date ,participant["win"], solo, duo, info["gameCreation"], info["gameDuration"], info["gameEndTimestamp"], info["gameMode"], info["gameStartTimestamp"] ,info["gameType"], info["mapId"], 0,
+                          participant["detectorWardsPlaced"], participant["firstBloodKill"], participant["enemyMissingPings"], participant["visionScore"],
+                          participant["wardsPlaced"], participant["assistMePings"], participant["baronKills"], participant["dragonKills"], participant["challenges"]["teamRiftHeraldKills"],
+                          firstTurret, participant["challenges"]["controlWardsPlaced"], participant["teamId"]
+            ]
+            self.open_connection()
+            self.cursor.execute(query, parameters)
+            self.conn.commit()
+
+        self.close_connection()
+
+
     def main_adding_tool(self, user_name, region, server, match_list_volume):
         riot_data_tool = GET_DATA(key=self.riot_key, region=region, server=server)
         user = riot_data_tool.user_by_name(user_name)
@@ -122,9 +176,19 @@ class UPLOAD_DATA:
                     match_list = riot_data_tool.match_list_by_puuid(user["puuid"], volume=match_list_volume)
                     for match in match_list:
                         match_info = riot_data_tool.get_match_data(match)
+                        #trzeba tutaj wypobirać wszystkie dane jsonowe
+                        #player_id mam z wyzej
+                        #trzeba tu zrobic system ze w z kazdego meczu biore tez mecze innych XDXD
+
+
+                        print(match_info)
+
                         timestamp = match_info["info"]["gameCreation"]/1000
                         date = datetime.datetime.fromtimestamp(timestamp).date()
                         self.add_new_matches(user["id"],date, match, match_info["info"]["gameMode"])
+                        print(match)
+                        self.add_match_data_info(match_info)
+
 
 test = UPLOAD_DATA()
-test.main_adding_tool("Myś","eun1","europe",5)
+test.main_adding_tool("RaidenShockblade","eun1","europe", 98)
